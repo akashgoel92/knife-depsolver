@@ -20,21 +20,25 @@ class Chef
       option :timeout,
              short: '-t',
              long: '--timeout SECONDS',
-             description: 'Set the local depsolver timeout. Only valid when using the --local-depsolver option'
+             description: 'Set the local depsolver timeout. Only valid when using the --local-depsolver or --env-constraints options'
 
       option :capture_env_constraints,
              long: '--capture-env-constraints FILENAME',
              description: 'Save the environment cookbook constraints to FILENAME'
 
+      option :env_constraints,
+             long: '--env-constraints FILENAME',
+             description: 'Use the environment cookbook constraints from FILENAME'
+
       def run
         begin
-          use_local_depsolver = config[:local_depsolver]
+          use_local_depsolver = config[:local_depsolver] || config[:env_constraints]
           timeout = 5000
           if config[:timeout]
             if use_local_depsolver
               timeout = (config[:timeout].to_f * 1000).to_i
             else
-              msg("ERROR: The --timeout option is only compatible with the --local-depsolver option")
+              msg("ERROR: The --timeout option is only compatible with the --local-depsolver or --env-constraints options")
               exit!
             end
           end
@@ -55,8 +59,38 @@ class Chef
 
           node.chef_environment = config[:environment] if config[:environment]
 
+          if config[:env_constraints]
+            unless File.file?(config[:env_constraints])
+              msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
+              exit!
+            end
+            env = JSON.parse(IO.read(config[:env_constraints]))
+            if env['environment_name'].nil? || env['environment_name'].empty?
+              msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
+              exit!
+            else
+              node.chef_environment = env['environment_name']
+            end
+            if !env['environment_constraints'].is_a?(Hash)
+              msg("ERROR: #{config[:env_constraints]} does not contain a Hash of environment constraints.")
+              exit!
+            else
+              environment_cookbook_versions = env['environment_constraints']
+            end
+          elsif use_local_depsolver || config[:capture_env_constraints]
+            if node.chef_environment == '_default'
+              environment_cookbook_versions = Hash.new
+            else
+              environment_cookbook_versions = Chef::Environment.load(node.chef_environment).cookbook_versions
+            end
+          end
+
+          if config[:capture_env_constraints]
+            env = { timestamp: Time.now, environment_name: node.chef_environment, environment_constraints: environment_cookbook_versions }
+            IO.write(config[:capture_env_constraints], JSON.pretty_generate(env))
+          end
+
           if use_local_depsolver
-            environment_cookbook_versions = Chef::Environment.load(environment).cookbook_versions
             env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
               [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
@@ -69,18 +103,6 @@ class Chef
               end
               [ckbk_name, ckbk_versions]
             end
-          end
-
-          if config[:capture_env_constraints]
-            unless environment_cookbook_versions
-              if node.chef_environment == '_default'
-                environment_cookbook_versions = Hash.new
-              else
-                environment_cookbook_versions = Chef::Environment.load(node.chef_environment).cookbook_versions
-              end
-            end
-            env = { timestamp: Time.now, environment_name: node.chef_environment, environment_constraints: environment_cookbook_versions }
-            IO.write(config[:capture_env_constraints], JSON.pretty_generate(env))
           end
 
           run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
