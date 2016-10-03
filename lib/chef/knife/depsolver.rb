@@ -67,7 +67,7 @@ class Chef
           results[:run_list] = node.run_list unless node.nil? || node.run_list.nil?
           results[:expanded_run_list] = expanded_run_list_with_versions unless expanded_run_list_with_versions.nil?
           results[:depsolver_results] = depsolver_results unless depsolver_results.nil? || depsolver_results.empty?
-          results[:depsolver_cookbook_count] = ckbks.count unless ckbks.nil?
+          results[:depsolver_cookbook_count] = depsolver_results.count unless depsolver_results.nil? || depsolver_results.empty?
           results[:depsolver_elapsed_ms] = ((depsolver_finish_time - depsolver_start_time) * 1000).to_i unless depsolver_finish_time.nil?
           results[:api_error] = api_error unless api_error.nil?
 
