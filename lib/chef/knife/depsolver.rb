@@ -48,7 +48,7 @@ class Chef
             depsolver_results[name] = version
           end
 
-        rescue => e
+        rescue Net::HTTPServerException => e
           api_error = {}
           api_error[:error_code] = e.response.code
           api_error[:error_message] = e.response.message
@@ -56,6 +56,9 @@ class Chef
             api_error[:error_body] = JSON.parse(e.response.body)
           rescue JSON::ParserError
           end
+        rescue => e
+          msg("ERROR: #{e.message}")
+          exit!
         ensure
           results = {}
           results[:node] = node.name unless node.nil? || node.name.nil?
