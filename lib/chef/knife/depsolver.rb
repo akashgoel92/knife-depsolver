@@ -30,6 +30,10 @@ class Chef
              long: '--env-constraints FILENAME',
              description: 'Use the environment cookbook constraints from FILENAME'
 
+      option :capture_universe,
+             long: '--capture-universe FILENAME',
+             description: 'Save the cookbook universe to FILENAME'
+
       def run
         begin
           use_local_depsolver = config[:local_depsolver] || config[:env_constraints]
@@ -90,12 +94,18 @@ class Chef
             IO.write(config[:capture_env_constraints], JSON.pretty_generate(env))
           end
 
+          if config[:capture_universe]
+            universe = rest.get_rest("universe")
+            uni = { timestamp: Time.now, universe: universe }
+            IO.write(config[:capture_universe], JSON.pretty_generate(uni))
+          end
+
           if use_local_depsolver
             env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
               [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
 
-            universe = rest.get_rest("universe")
+            universe ||= rest.get_rest("universe")
 
             all_versions = universe.map do |ckbk_name, ckbk_metadata|
               ckbk_versions = ckbk_metadata.map do |version, version_metadata|
