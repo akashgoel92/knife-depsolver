@@ -33,7 +33,7 @@ class Chef
 
           environment_cookbook_versions = Chef::Environment.load(environment).cookbook_versions
 
-          run_list_expansion = node.expand!
+          run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
           expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
 
           depsolver_start_time = Time.now
