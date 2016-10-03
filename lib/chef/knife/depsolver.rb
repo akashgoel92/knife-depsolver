@@ -29,8 +29,7 @@ class Chef
             end
           end
 
-          environment = config[:environment]
-          environment ||= node.chef_environment
+          node.chef_environment = config[:environment] if config[:environment]
 
           environment_cookbook_versions = Chef::Environment.load(environment).cookbook_versions
 
@@ -39,7 +38,7 @@ class Chef
 
           depsolver_start_time = Time.now
 
-          ckbks = rest.post_rest("environments/" + environment + "/cookbook_versions", { "run_list" => expanded_run_list_with_versions })
+          ckbks = rest.post_rest("environments/" + node.chef_environment + "/cookbook_versions", { "run_list" => expanded_run_list_with_versions })
 
           depsolver_finish_time = Time.now
 
@@ -60,7 +59,7 @@ class Chef
         ensure
           results = {}
           results[:node] = node.name unless node.nil? || node.name.nil?
-          results[:environment] = environment unless environment.nil?
+          results[:environment] = node.chef_environment unless node.chef_environment.nil?
           results[:environment_cookbook_versions] = environment_cookbook_versions unless environment_cookbook_versions.nil?
           results[:run_list] = node.run_list unless node.nil? || node.run_list.nil?
           results[:expanded_run_list] = expanded_run_list_with_versions unless expanded_run_list_with_versions.nil?
