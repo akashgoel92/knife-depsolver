@@ -42,6 +42,10 @@ class Chef
              long: '--csv-universe-to-json FILENAME',
              description: 'Convert a CSV cookbook universe, FILENAME, to JSON.'
 
+      option :env_constraints_filter_universe,
+           long: '--env-constraints-filter-universe',
+           description: 'Filter the cookbook universe using the environment cookbook version constraints.'
+
       def run
         begin
           if config[:csv_universe_to_json]
@@ -70,7 +74,7 @@ class Chef
             end
           end
 
-          if config[:node]
+          if config[:node] && !(config[:env_constraints_filter_universe] && config[:env_constraints])
             node = Chef::Node.load(config[:node])
           else
             node = Chef::Node.new
@@ -136,6 +140,19 @@ class Chef
           if config[:capture_universe]
             uni = { timestamp: Time.now, universe: universe }
             IO.write(config[:capture_universe], JSON.pretty_generate(uni))
+          end
+
+          if config[:env_constraints_filter_universe]
+            env_constraints = environment_cookbook_versions.each_with_object({}) do |env_constraint, memo|
+              name, constraint = env_constraint
+              constraint, version = constraint.split
+              memo[name] = DepSelector::VersionConstraint.new(constraint_to_str(constraint, version))
+            end
+            universe.each do |name, versions|
+              versions.delete_if {|version, v| !env_constraints[name].include?(version)} if env_constraints[name]
+            end
+            puts JSON.pretty_generate({ timestamp: Time.now, filtered_universe: universe })
+            exit!
           end
 
           if use_local_depsolver
