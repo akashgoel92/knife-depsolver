@@ -20,7 +20,7 @@ class Chef
       option :timeout,
              short: '-t',
              long: '--timeout SECONDS',
-             description: 'Set the local depsolver timeout. Only valid when using the --local-depsolver or --env-constraints options'
+             description: 'Set the local depsolver timeout. Only valid when using the --local-depsolver, --env-constraints or --universe options'
 
       option :capture_env_constraints,
              long: '--capture-env-constraints FILENAME',
@@ -34,15 +34,19 @@ class Chef
              long: '--capture-universe FILENAME',
              description: 'Save the cookbook universe to FILENAME'
 
+      option :universe,
+             long: '--universe FILENAME',
+             description: 'Use the cookbook universe from FILENAME. The local depsolver will automatically be used'
+
       def run
         begin
-          use_local_depsolver = config[:local_depsolver] || config[:env_constraints]
+          use_local_depsolver = config[:local_depsolver] || config[:env_constraints] || config[:universe]
           timeout = 5000
           if config[:timeout]
             if use_local_depsolver
               timeout = (config[:timeout].to_f * 1000).to_i
             else
-              msg("ERROR: The --timeout option is only compatible with the --local-depsolver or --env-constraints options")
+              msg("ERROR: The --timeout option is only compatible with the --local-depsolver, --env-constraints or --universe options")
               exit!
             end
           end
@@ -94,8 +98,23 @@ class Chef
             IO.write(config[:capture_env_constraints], JSON.pretty_generate(env))
           end
 
-          if config[:capture_universe]
+          if config[:universe]
+            unless File.file?(config[:universe])
+              msg("ERROR: #{config[:universe]} does not exist or is not a file.")
+              exit!
+            end
+            uni = JSON.parse(IO.read(config[:universe]))
+            if !uni['universe'].is_a?(Hash)
+              msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
+              exit!
+            else
+              universe = uni['universe']
+            end
+          elsif use_local_depsolver || config[:capture_universe]
             universe = rest.get_rest("universe")
+          end
+
+          if config[:capture_universe]
             uni = { timestamp: Time.now, universe: universe }
             IO.write(config[:capture_universe], JSON.pretty_generate(uni))
           end
@@ -104,8 +123,6 @@ class Chef
             env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
               [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
-
-            universe ||= rest.get_rest("universe")
 
             all_versions = universe.map do |ckbk_name, ckbk_metadata|
               ckbk_versions = ckbk_metadata.map do |version, version_metadata|
