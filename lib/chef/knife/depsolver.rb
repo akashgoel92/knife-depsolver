@@ -38,8 +38,27 @@ class Chef
              long: '--universe FILENAME',
              description: 'Use the cookbook universe from FILENAME. The local depsolver will automatically be used'
 
+      option :csv_universe_to_json,
+             long: '--csv-universe-to-json FILENAME',
+             description: 'Convert a CSV cookbook universe, FILENAME, to JSON.'
+
       def run
         begin
+          if config[:csv_universe_to_json]
+            unless File.file?(config[:csv_universe_to_json])
+              msg("ERROR: #{config[:csv_universe_to_json]} does not exist or is not a file.")
+              exit!
+            end
+            universe = Hash.new { |hash, key| hash[key] = Hash.new }
+            IO.foreach(config[:csv_universe_to_json]) do |line|
+              name, version, dependencies = line.split(",", 3)
+              universe[name][version] = {dependencies: JSON.parse(dependencies)}
+            end
+
+            puts JSON.pretty_generate({timestamp: Time.now, universe: universe})
+            exit!
+          end
+
           use_local_depsolver = config[:local_depsolver] || config[:env_constraints] || config[:universe]
           timeout = 5000
           if config[:timeout]
