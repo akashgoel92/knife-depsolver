@@ -194,6 +194,12 @@ class Chef
               depsolver_error = { error_type => error_detail }
             end
           else
+            begin
+              chef_server_version = rest.get(server_url.sub(/organizations.*/, 'version')).split("\n")[0]
+            rescue Net::HTTPServerException
+              chef_server_version = "unknown"
+            end
+
             depsolver_start_time = Time.now
 
             ckbks = rest.post_rest("environments/" + node.chef_environment + "/cookbook_versions", { "run_list" => expanded_run_list_with_versions })
@@ -217,7 +223,21 @@ class Chef
           msg("ERROR: #{e.message}")
           exit!
         ensure
+          local_software = Hash.new
+          %w(chef-dk chef dep_selector).each do |gem_name|
+            begin
+              local_software[gem_name] = Gem::Specification.find_by_name(gem_name).version
+            rescue Gem::MissingSpecError
+            end
+          end
+
           results = {}
+          results[:local_software] = local_software unless local_software.empty?
+          if use_local_depsolver
+            results[:depsolver] = "used local depsolver"
+          else
+            results[:depsolver] = {"used chef server": chef_server_version} unless chef_server_version.nil?
+          end
           results[:node] = node.name unless node.nil? || node.name.nil?
           results[:environment] = node.chef_environment unless node.chef_environment.nil?
           results[:run_list] = node.run_list unless node.nil? || node.run_list.nil?
