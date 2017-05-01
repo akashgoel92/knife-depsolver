@@ -59,7 +59,10 @@ class Chef
               universe[name][version] = {updated_at: updated_at, dependencies: JSON.parse(dependencies)}
             end
 
-            puts JSON.pretty_generate({timestamp: Time.now, universe: universe})
+            universe_json = JSON.pretty_generate(universe)
+            universe_filename = "universe-#{Time.now.strftime("%Y%m%d%H%M%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
+            IO.write(universe_filename, universe_json)
+            puts "Cookbook universe saved to #{universe_filename}"
             exit!
           end
 
