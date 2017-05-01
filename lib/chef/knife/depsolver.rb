@@ -151,7 +151,10 @@ class Chef
             universe.each do |name, versions|
               versions.delete_if {|version, v| !env_constraints[name].include?(version)} if env_constraints[name]
             end
-            puts JSON.pretty_generate({ timestamp: Time.now, filtered_universe: universe })
+            filtered_universe_json = JSON.pretty_generate(universe)
+            filtered_universe_filename = "filtered-universe-#{Time.now.strftime("%Y%m%d%H%M%S")}-#{Digest::SHA1.hexdigest(filtered_universe_json)}.txt"
+            IO.write(filtered_universe_filename, filtered_universe_json)
+            puts "Filtered cookbook universe saved to #{filtered_universe_filename}"
             exit!
           end
 
