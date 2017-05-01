@@ -50,10 +50,16 @@ class Chef
           elsif !config[:env_constraints] && config[:universe]
             puts "ERROR: The --universe option requires the --env-constraints option to be set"
             exit!
+          elsif config[:timeout] && !(config[:env_constraints] && config[:universe])
+            msg("ERROR: The --timeout option requires the --env-constraints and --universe options to be set")
+            exit!
           elsif config[:env_constraints_filter_universe] && !(config[:env_constraints] && config[:universe])
             msg("ERROR: The --env-constraints-filter-universe option requires the --env-constraints and --universe options to be set")
             exit!
           end
+
+          timeout = (config[:timeout].to_f * 1000).to_i
+          timeout ||= 5 * 1000
 
           if config[:csv_universe_to_json]
             unless File.file?(config[:csv_universe_to_json])
@@ -71,17 +77,6 @@ class Chef
             IO.write(universe_filename, universe_json)
             puts "Cookbook universe saved to #{universe_filename}"
             exit!
-          end
-
-          use_local_depsolver = config[:local_depsolver] || config[:env_constraints] || config[:universe]
-          timeout = 5000
-          if config[:timeout]
-            if use_local_depsolver
-              timeout = (config[:timeout].to_f * 1000).to_i
-            else
-              msg("ERROR: The --timeout option is only compatible with the --local-depsolver, --env-constraints or --universe options")
-              exit!
-            end
           end
 
           if config[:node] && !(config[:env_constraints_filter_universe] && config[:env_constraints])
