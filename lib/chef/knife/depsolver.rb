@@ -1,4 +1,5 @@
 require 'chef/knife'
+require 'digest'
 
 class Chef
   class Knife
@@ -13,26 +14,18 @@ class Chef
              long: '--node NAME',
              description: 'Use the run list from a given node'
 
-      option :local_depsolver,
-             long: '--local-depsolver',
-             description: 'Use the local depsolver'
-
       option :timeout,
              short: '-t',
              long: '--timeout SECONDS',
-             description: 'Set the local depsolver timeout. Only valid when using the --local-depsolver, --env-constraints or --universe options'
+             description: 'Set the local depsolver timeout. Only valid when using the --env-constraints and --universe options'
 
-      option :capture_env_constraints,
-             long: '--capture-env-constraints FILENAME',
-             description: 'Save the environment cookbook constraints to FILENAME'
+      option :capture,
+             long: '--capture',
+             description: 'Save the expanded run list, environment cookbook constraints and cookbook universe to files for local depsolving'
 
       option :env_constraints,
              long: '--env-constraints FILENAME',
-             description: 'Use the environment cookbook constraints from FILENAME'
-
-      option :capture_universe,
-             long: '--capture-universe FILENAME',
-             description: 'Save the cookbook universe to FILENAME'
+             description: 'Use the environment cookbook constraints from FILENAME. The local depsolver will automatically be used'
 
       option :universe,
              long: '--universe FILENAME',
@@ -48,6 +41,20 @@ class Chef
 
       def run
         begin
+          if config[:capture] && (config[:env_constraints] || config[:universe])
+            puts "ERROR: The --capture option is not compatible with the --env-constraints or --universe options"
+            exit!
+          elsif config[:env_constraints] && !config[:universe]
+            puts "ERROR: The --env-constraints option requires the --universe option to be set"
+            exit!
+          elsif !config[:env_constraints] && config[:universe]
+            puts "ERROR: The --universe option requires the --env-constraints option to be set"
+            exit!
+          elsif config[:env_constraints_filter_universe] && !(config[:env_constraints] && config[:universe])
+            msg("ERROR: The --env-constraints-filter-universe option requires the --env-constraints and --universe options to be set")
+            exit!
+          end
+
           if config[:csv_universe_to_json]
             unless File.file?(config[:csv_universe_to_json])
               msg("ERROR: #{config[:csv_universe_to_json]} does not exist or is not a file.")
@@ -93,56 +100,61 @@ class Chef
 
           node.chef_environment = config[:environment] if config[:environment]
 
-          if config[:env_constraints]
-            unless File.file?(config[:env_constraints])
-              msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
-              exit!
-            end
-            env = JSON.parse(IO.read(config[:env_constraints]))
-            if env['environment_name'].nil? || env['environment_name'].empty?
-              msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
-              exit!
-            else
-              node.chef_environment = env['environment_name']
-            end
-            if !env['environment_constraints'].is_a?(Hash)
-              msg("ERROR: #{config[:env_constraints]} does not contain a Hash of environment constraints.")
-              exit!
-            else
-              environment_cookbook_versions = env['environment_constraints']
-            end
-          elsif use_local_depsolver || config[:capture_env_constraints]
+          if config[:capture]
             if node.chef_environment == '_default'
               environment_cookbook_versions = Hash.new
             else
               environment_cookbook_versions = Chef::Environment.load(node.chef_environment).cookbook_versions
             end
+            env = { name: node.chef_environment, cookbook_versions: environment_cookbook_versions }
+            environment_constraints_json = JSON.pretty_generate(env)
+            environment_constraints_filename = "#{node.chef_environment}-environment-#{Time.now.strftime("%Y%m%d%H%M%S")}-#{Digest::SHA1.hexdigest(environment_constraints_json)}.txt"
+            IO.write(environment_constraints_filename, environment_constraints_json)
+            puts "Environment constraints saved to #{environment_constraints_filename}"
+
+            begin
+              universe = rest.get_rest("universe")
+              universe_json = JSON.pretty_generate(universe)
+              universe_filename = ""
+              rest.url.to_s.match(".*/organizations/(.*)/?") { universe_filename = "#{$1}-" }
+              universe_filename += "universe-#{Time.now.strftime("%Y%m%d%H%M%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
+              IO.write(universe_filename, universe_json)
+              puts "Cookbook universe saved to #{universe_filename}"
+            rescue Net::HTTPServerException
+              puts "WARNING: The cookbook universe API endpoint is not available."
+              puts "WARNING: Try capturing the cookbook universe using the SQL query found in the knife-depsolver README."
+              puts "WARNING: Then convert the results using knife-depsolver's --csv-universe-to-json option"
+            end
           end
 
-          if config[:capture_env_constraints]
-            env = { timestamp: Time.now, environment_name: node.chef_environment, environment_constraints: environment_cookbook_versions }
-            IO.write(config[:capture_env_constraints], JSON.pretty_generate(env))
-          end
+          if config[:env_constraints] && config[:universe]
+            unless File.file?(config[:env_constraints])
+              msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
+              exit!
+            end
+            env = JSON.parse(IO.read(config[:env_constraints]))
+            if env['name'].to_s.empty?
+              msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
+              exit!
+            else
+              node.chef_environment = env['name']
+            end
+            if !env['cookbook_versions'].is_a?(Hash)
+              msg("ERROR: #{config[:env_constraints]} does not contain a Hash of cookbook version constraints.")
+              exit!
+            else
+              environment_cookbook_versions = env['cookbook_versions']
+            end
 
-          if config[:universe]
             unless File.file?(config[:universe])
               msg("ERROR: #{config[:universe]} does not exist or is not a file.")
               exit!
             end
-            uni = JSON.parse(IO.read(config[:universe]))
-            if !uni['universe'].is_a?(Hash)
+            universe = JSON.parse(IO.read(config[:universe]))
+            if !universe.is_a?(Hash)
               msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
               exit!
-            else
-              universe = uni['universe']
             end
-          elsif use_local_depsolver || config[:capture_universe]
-            universe = rest.get_rest("universe")
-          end
-
-          if config[:capture_universe]
-            uni = { timestamp: Time.now, universe: universe }
-            IO.write(config[:capture_universe], JSON.pretty_generate(uni))
           end
 
           if config[:env_constraints_filter_universe]
@@ -161,7 +173,13 @@ class Chef
             exit!
           end
 
-          if use_local_depsolver
+          run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
+          expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
+
+          exit if config[:capture]
+
+          depsolver_results = Hash.new
+          if config[:env_constraints] && config[:universe]
             env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
               [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
@@ -172,13 +190,7 @@ class Chef
               end
               [ckbk_name, ckbk_versions]
             end
-          end
 
-          run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
-          expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
-
-          depsolver_results = Hash.new
-          if use_local_depsolver
             expanded_run_list_with_split_versions = expanded_run_list_with_versions.map do |run_list_item|
               name, version = run_list_item.split('@')
               name.sub!(/::.*/, '')
@@ -239,7 +251,7 @@ class Chef
 
           results = {}
           results[:local_software] = local_software unless local_software.empty?
-          if use_local_depsolver
+          if config[:env_constraints] && config[:universe]
             results[:depsolver] = "used local depsolver"
           else
             results[:depsolver] = {"used chef server" => chef_server_version} unless chef_server_version.nil?
@@ -254,7 +266,14 @@ class Chef
           results[:depsolver_error] = depsolver_error unless depsolver_error.nil?
           results[:api_error] = api_error unless api_error.nil?
 
-          msg(JSON.pretty_generate(results))
+          if config[:capture]
+            results_json = JSON.pretty_generate(results)
+            expanded_run_list_filename = "expanded-run-list-#{Time.now.strftime("%Y%m%d%H%M%S")}-#{Digest::SHA1.hexdigest(results_json)}.txt"
+            IO.write(expanded_run_list_filename, results_json)
+            puts "Expanded run list saved to #{expanded_run_list_filename}"
+          else
+            msg(JSON.pretty_generate(results))
+          end
         end
       end
     end
