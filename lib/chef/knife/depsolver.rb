@@ -55,8 +55,8 @@ class Chef
             end
             universe = Hash.new { |hash, key| hash[key] = Hash.new }
             IO.foreach(config[:csv_universe_to_json]) do |line|
-              name, version, dependencies = line.split(",", 3)
-              universe[name][version] = {dependencies: JSON.parse(dependencies)}
+              name, version, updated_at, dependencies = line.split(",", 4)
+              universe[name][version] = {updated_at: updated_at, dependencies: JSON.parse(dependencies)}
             end
 
             puts JSON.pretty_generate({timestamp: Time.now, universe: universe})
