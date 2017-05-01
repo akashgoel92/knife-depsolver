@@ -236,7 +236,7 @@ class Chef
           if use_local_depsolver
             results[:depsolver] = "used local depsolver"
           else
-            results[:depsolver] = {"used chef server": chef_server_version} unless chef_server_version.nil?
+            results[:depsolver] = {"used chef server" => chef_server_version} unless chef_server_version.nil?
           end
           results[:node] = node.name unless node.nil? || node.name.nil?
           results[:environment] = node.chef_environment unless node.chef_environment.nil?
