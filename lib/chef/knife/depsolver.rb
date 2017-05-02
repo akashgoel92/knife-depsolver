@@ -45,20 +45,43 @@ class Chef
 
       def run
         begin
-          if config[:capture] && (config[:env_constraints] || config[:universe])
-            puts "ERROR: The --capture option is not compatible with the --env-constraints or --universe options"
-            exit!
-          elsif config[:env_constraints] && !config[:universe]
-            puts "ERROR: The --env-constraints option requires the --universe option to be set"
-            exit!
-          elsif !config[:env_constraints] && config[:universe]
-            puts "ERROR: The --universe option requires the --env-constraints option to be set"
-            exit!
-          elsif config[:timeout] && !(config[:env_constraints] && config[:universe])
-            msg("ERROR: The --timeout option requires the --env-constraints and --universe options to be set")
-            exit!
-          elsif config[:env_constraints_filter_universe] && !(config[:env_constraints] && config[:universe])
-            msg("ERROR: The --env-constraints-filter-universe option requires the --env-constraints and --universe options to be set")
+          use_local_depsolver = false
+          if config[:env_constraints_filter_universe]
+            if config[:node] || config[:environment] || config[:timeout] || config[:capture] || config[:expanded_run_list] || config[:csv_universe_to_json]
+              msg("ERROR: The --env-constraints-filter-universe option is only compatible with the --env-constraints and --universe options")
+              exit!
+            elsif !(config[:env_constraints] && config[:universe])
+              msg("ERROR: The --env-constraints-filter-universe option requires the --env-constraints and --universe options to be set")
+              exit!
+            end
+          else
+            if config[:env_constraints] || config[:universe] || config[:expanded_run_list]
+              if config[:env_constraints] && config[:universe] && config[:expanded_run_list]
+                use_local_depsolver = true
+                unless name_args.empty?
+                  puts "ERROR: Setting a run list on the command line is not compatible with the --env-constraints, --universe or --expanded-run-list options"
+                  exit!
+                end
+                if config[:node]
+                  puts "ERROR: The --node option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
+                  exit!
+                end
+                if config[:environment]
+                  puts "ERROR: The --environment option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
+                  exit!
+                end
+                if config[:capture]
+                  puts "ERROR: The --capture option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
+                  exit!
+                end
+              else
+                puts "ERROR: The --env-constraints, --universe and --expanded-run-list options must be used together to use the local depsolver"
+                exit!
+              end
+            end
+          end
+          if config[:timeout] && !use_local_depsolver
+            msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
             exit!
           end
 
@@ -197,7 +220,7 @@ class Chef
           exit if config[:capture]
 
           depsolver_results = Hash.new
-          if config[:env_constraints] && config[:universe]
+          if use_local_depsolver
             env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
               [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
@@ -269,7 +292,7 @@ class Chef
 
           results = {}
           results[:local_software] = local_software unless local_software.empty?
-          if config[:env_constraints] && config[:universe]
+          if use_local_depsolver
             results[:depsolver] = "used local depsolver"
           else
             results[:depsolver] = {"used chef server" => chef_server_version} unless chef_server_version.nil?
