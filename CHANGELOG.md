@@ -1,5 +1,9 @@
 # Change Log
 
+## 2.0.1 (2017-05-02)
+
+* Minor change to file name timestamp format
+
 ## 2.0.0 (2017-05-02)
 
 * Set the node's environment to ensure accurate run_list expansion
