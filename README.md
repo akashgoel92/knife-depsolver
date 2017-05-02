@@ -139,7 +139,11 @@ ORDER BY updated_at DESC;
 EOF
 ```
 
-Then you can run "knife depsolver --csv-universe-to-json universe.csv" to convert it to the normal JSON format.
+Then you can run the following command to convert it to the normal JSON format.
+
+```
+knife depsolver --csv-universe-to-json universe.csv
+```
 
 If the Chef Server doesn't have the "chef-server-ctl psql" command available then you can try replacing that line with the following.
 
