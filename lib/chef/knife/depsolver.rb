@@ -122,7 +122,7 @@ class Chef
             end
           end
 
-          if config[:env_constraints] && config[:universe]
+          if config[:env_constraints]
             unless File.file?(config[:env_constraints])
               msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
               exit!
@@ -140,7 +140,9 @@ class Chef
             else
               environment_cookbook_versions = env['cookbook_versions']
             end
+          end
 
+          if config[:universe]
             unless File.file?(config[:universe])
               msg("ERROR: #{config[:universe]} does not exist or is not a file.")
               exit!
