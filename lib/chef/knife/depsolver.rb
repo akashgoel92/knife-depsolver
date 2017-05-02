@@ -58,7 +58,7 @@ class Chef
             exit!
           end
 
-          timeout = (config[:timeout].to_f * 1000).to_i
+          timeout = (config[:timeout].to_f * 1000).to_i if config[:timeout]
           timeout ||= 5 * 1000
 
           if config[:csv_universe_to_json]
