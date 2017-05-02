@@ -31,6 +31,10 @@ class Chef
              long: '--universe FILENAME',
              description: 'Use the cookbook universe from FILENAME. REQUIRED when using the local depsolver.'
 
+       option :expanded_run_list,
+              long: '--expanded-run-list FILENAME',
+              description: 'Use the expanded run list from FILENAME. REQUIRED when using the local depsolver.'
+
       option :csv_universe_to_json,
              long: '--csv-universe-to-json FILENAME',
              description: 'Convert a CSV cookbook universe, FILENAME, to JSON.'
@@ -85,11 +89,28 @@ class Chef
             node = Chef::Node.new
             node.name('depsolver-tmp-node')
 
-            run_list = name_args.map {|item| item.to_s.split(/,/) }.flatten.each{|item| item.strip! }
-            run_list.delete_if {|item| item.empty? }
+            if config[:expanded_run_list]
+              unless File.file?(config[:expanded_run_list])
+                msg("ERROR: #{config[:expanded_run_list]} does not exist or is not a file.")
+                exit!
+              end
+              contents = JSON.parse(IO.read(config[:expanded_run_list]))
+              if !(contents.key?('expanded_run_list') && contents['expanded_run_list'].is_a?(Array))
+                msg("ERROR: #{config[:expanded_run_list]} does not contain an expanded run list array.")
+                exit!
+              else
+                expanded_run_list = contents['expanded_run_list']
+                expanded_run_list.each do |arg|
+                  node.run_list.add(arg)
+                end
+              end
+            else
+              run_list = name_args.map {|item| item.to_s.split(/,/) }.flatten.each{|item| item.strip! }
+              run_list.delete_if {|item| item.empty? }
 
-            run_list.each do |arg|
-              node.run_list.add(arg)
+              run_list.each do |arg|
+                node.run_list.add(arg)
+              end
             end
           end
 
