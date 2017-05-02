@@ -100,7 +100,7 @@ class Chef
             end
 
             universe_json = JSON.pretty_generate(universe)
-            universe_filename = "universe-#{Time.now.strftime("%Y-%m-%d-%H:%M:%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
+            universe_filename = "universe-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
             IO.write(universe_filename, universe_json)
             puts "Cookbook universe saved to #{universe_filename}"
             exit!
@@ -147,7 +147,7 @@ class Chef
             end
             env = { name: node.chef_environment, cookbook_versions: environment_cookbook_versions }
             environment_constraints_json = JSON.pretty_generate(env)
-            environment_constraints_filename = "#{node.chef_environment}-environment-#{Time.now.strftime("%Y-%m-%d-%H:%M:%S")}-#{Digest::SHA1.hexdigest(environment_constraints_json)}.txt"
+            environment_constraints_filename = "#{node.chef_environment}-environment-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(environment_constraints_json)}.txt"
             IO.write(environment_constraints_filename, environment_constraints_json)
             puts "Environment constraints saved to #{environment_constraints_filename}"
 
@@ -156,7 +156,7 @@ class Chef
               universe_json = JSON.pretty_generate(universe)
               universe_filename = ""
               rest.url.to_s.match(".*/organizations/(.*)/?") { universe_filename = "#{$1}-" }
-              universe_filename += "universe-#{Time.now.strftime("%Y-%m-%d-%H:%M:%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
+              universe_filename += "universe-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
               IO.write(universe_filename, universe_json)
               puts "Cookbook universe saved to #{universe_filename}"
             rescue Net::HTTPServerException
@@ -208,7 +208,7 @@ class Chef
               versions.delete_if {|version, v| !env_constraints[name].include?(version)} if env_constraints[name]
             end
             filtered_universe_json = JSON.pretty_generate(universe)
-            filtered_universe_filename = "filtered-universe-#{Time.now.strftime("%Y-%m-%d-%H:%M:%S")}-#{Digest::SHA1.hexdigest(filtered_universe_json)}.txt"
+            filtered_universe_filename = "filtered-universe-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(filtered_universe_json)}.txt"
             IO.write(filtered_universe_filename, filtered_universe_json)
             puts "Filtered cookbook universe saved to #{filtered_universe_filename}"
             exit!
@@ -309,7 +309,7 @@ class Chef
 
           if config[:capture]
             results_json = JSON.pretty_generate(results)
-            expanded_run_list_filename = "expanded-run-list-#{Time.now.strftime("%Y-%m-%d-%H:%M:%S")}-#{Digest::SHA1.hexdigest(results_json)}.txt"
+            expanded_run_list_filename = "expanded-run-list-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(results_json)}.txt"
             IO.write(expanded_run_list_filename, results_json)
             puts "Expanded run list saved to #{expanded_run_list_filename}"
           else
