@@ -25,11 +25,11 @@ class Chef
 
       option :env_constraints,
              long: '--env-constraints FILENAME',
-             description: 'Use the environment cookbook constraints from FILENAME. The local depsolver will automatically be used'
+             description: 'Use the environment cookbook constraints from FILENAME. REQUIRED when using the local depsolver.'
 
       option :universe,
              long: '--universe FILENAME',
-             description: 'Use the cookbook universe from FILENAME. The local depsolver will automatically be used'
+             description: 'Use the cookbook universe from FILENAME. REQUIRED when using the local depsolver.'
 
       option :csv_universe_to_json,
              long: '--csv-universe-to-json FILENAME',
