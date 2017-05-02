@@ -1,14 +1,15 @@
 ## knife-depsolver
 
-Knife plugin that uses Chef Server to calculate cookbook dependencies for a given run_list.
+Knife plugin that calculates Chef cookbook dependencies for a given run_list.
 
 Some features of knife-depsolver:
 
-1. JSON output for easy parsing
-2. API error handling provides very helpful information
-3. Accepts cookbook version constraints directly in the run_list
-4. Useful information such as environment cookbook version constraints, expanded run_list and elapsed time for depsolver request
-5. Ordering of depsolver results is maintained rather than sorted so you see what really gets passed to the chef-client
+1. Able to capture all relevant information and use Chef DK's embedded depsolver.
+2. JSON output for easy parsing
+3. API error handling provides very helpful information
+4. Accepts cookbook version constraints directly in the run_list
+5. Useful information such as environment cookbook version constraints, expanded run_list and elapsed time for depsolver request
+6. Ordering of depsolver results is maintained rather than sorted so you see what really gets passed to the chef-client
 
 ### How Does Cookbook Dependency Solving Work?
 
@@ -28,13 +29,8 @@ This script uses the [dep_selector gem](https://github.com/chef/dep-selector) to
 cookbook versions that don't satisfy the environment cookbook version constraints.
 
 The dep_selector gem re-formulates the dependency graph and the solution constraints as a CSP and off-loads the hard work to
-[Gecode](http://www.gecode.org/), a fast, license-friendly solver written in C++. If Gecode returns a solution then that is used by opscode-erchef
-to send a list of cookbook file metadata back to the chef-client so it can synchronize its cookbook cache.
-
-!!!!!!!upgrade your chef server!!!!!!!
-
-
-
+[Gecode](http://www.gecode.org/), a fast, license-friendly solver written in C++. If Gecode returns a solution then that is used by
+opscode-erchef to send a list of cookbook file metadata back to the chef-client so it can synchronize its cookbook cache.
 
 ### Install
 
@@ -42,21 +38,7 @@ to send a list of cookbook file metadata back to the chef-client so it can synch
 chef gem install knife-depsolver
 ```
 
-### Usage
-
-Find the depsolver solution for an arbitrary run_list.
-Specifying recipes and even cookbook version constraints is allowed.
-
-```
-knife depsolver 'cookbook-B,cookbook-A::foo@3.1.4,cookbook-R'
-```
-
-Find the depsolver solution for an arbitrary run_list using a specific environment's cookbook version constraints.
-Specifying recipes and even cookbook version constraints is allowed.
-
-```
-knife depsolver -E production 'cookbook-B,cookbook-A::foo@3.1.4,cookbook-R'
-```
+### Using knife-depsolver with Chef Server's depsolver
 
 Find the depsolver solution for a node's run_list.
 
@@ -64,58 +46,101 @@ Find the depsolver solution for a node's run_list.
 knife depsolver -n demo-node
 ```
 
-Find the depsolver solution for a node's run_list using a specific environment's cookbook version constraints.
+Find the depsolver solution for an arbitrary run_list.
+Specifying roles, recipes and even cookbook version constraints is allowed.
+
+```
+knife depsolver 'role[base],cookbook-B,cookbook-A::foo@3.1.4,cookbook-R'
+```
+
+The "-E <environment>" option can be added to use a specific environment's cookbook version constraints.
 
 ```
 knife depsolver -E production -n demo-node
+OR
+knife depsolver -E production 'role[base],cookbook-B,cookbook-A::foo@3.1.4,cookbook-R'
 ```
 
-### Chef DK's Embedded Depsolver
+### Using knife-depsolver with Chef DK's embedded depsolver
 
-what versions of Chef DK match what versions of Chef Server?
+It can be difficult to identify the source of the problem if we hit a depsolver issue in the Chef Server.
 
-knife-depsolver --local-depsolver option requires universe data
-  chef server 12.4.0 added the /universe endpoint
+knife-depsolver can provide many more troubleshooting options by using the depsolver embedded in your workstation's Chef DK to make an identical calculation as the Chef Server.
 
-chef dk 0.17.17 has new dep_selector 1.0.4
-https://discourse.chef.io/t/chef-dk-0-17-17-released/9203    2016-08-17
-https://github.com/chef/chef-dk/commit/5e13ef95a3df550b9466b231c123a6d43b9fc168
-chef dk 0.16.28  has older dep_selector 1.0.3
-chef gem list dep_selector
+First, you need to make sure that your version of Chef DK is using the same version of the dep_selector gem as your version of Chef Server. If your Chef DK is using a different version of the dep_selector gem then knife-depsolver's calculations will not be identical to the Chef Server's calculations which will confuse troubleshooting efforts.
 
-chef server 12.9.0 introduced new dep_selector 1.0.4
-https://discourse.chef.io/t/chef-server-12-9-0-released/9493   2016-09-22
-https://github.com/chef/chef-server/tree/12.9.0
-12.8.0 has 1.0.3
-dep_selector 1.0.3 was released 2014-04-22
-https://github.com/chef/dep-selector/commit/7a75df69ae482768b439a28ab5e237459c6fa263
-depselector.rb hasn't changed much at all since 2013-08-23 around the time it was originally brought into erchef
-https://github.com/chef/chef_objects/commits/master/priv/depselector_rb/depselector.rb
-/opt/opscode/embedded/bin/gem list dep
+| dep_selector gem | Chef Server | Chef DK    |
+| ---------------- | ----------- | ---------- |
+| 1.0.3            | <= 12.8.0   | <= 0.16.28 |
+| 1.0.4            | >= 12.9.0   | >= 0.17.17 |
 
+Once you are sure you are using the correct version of Chef DK and you have installed the knife-depsolver plugin you can use the "--capture" option which queries the Chef Server and creates a separate file on the workstation for each of the following pieces of information.
 
-### Local Depsolver Usage
+1. environment cookbook version constraints
+2. cookbook universe
+3. expanded run list
 
-If we are hitting a depsolver timeout issue in the Chef Server it becomes difficult to identify the source of the problem.
+The name of each file includes a creation timestamp and a SHA-1 checksum of the contents of the file. These can help during the troubleshooting process to make sure we know when the capture was done and whether anyone has modified the contents of the file.
 
-We can use the depsolver embedded in our workstation's Chef DK to make an identical calculation as the Chef Server but with
-a configurable timeout to give the depsolver more time.
-
-If this allows the depsolver to finish then the results can help us identify the cause of the slow depsolver calculation.
+For example:
 
 ```
-knife depsolver -n NODENAME --local-depsolver --timeout 120000
+knife depsolver -E production -n demo-node --capture
+OR
+knife depsolver -E production 'role[base],cookbook-B,cookbook-A::foo@3.1.4,cookbook-R' --capture
 ```
 
-and if we want to reproduce what the customer is seeing we can ask them to send us the files generated by the following two commands
+Now use the "--env-constraints", "universe" and "expanded-run-list" options to provide all the information required for local depsolver calculations.
+
+For example:
 
 ```
-knife depsolver -n NODENAME  --capture-env-constraints FILENAME --capture-universe FILENAME > depsolver_results.txt
+knife depsolver --env-constraints rehearsal-environment-20170501185240-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-20170501185240-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-20170501185240-387d90499514747792a805213c30be13d830d31f.txt
 ```
 
-let's say the expanded run_list in depsolver_results.txt is 'cookbook-A,cookbook-B@1.2.3'
-then we can do the following to perfectly simulate what the customer is seeing
+Now it is easy to modify any combination of the expanded run list, the environment cookbook version constraints or the cookbook universe in those files and see the impact on the depsolver in an effort to isolate the problem.
+
+Sometimes it can help to give the depsolver more than the default five seconds to perform its calculations. This can be done by using the "--timeout <seconds>" option to change the depsolver timeout.
 
 ```
-knife depsolver --env-constraints FILENAME --universe FILENAME 'cookbook-A,cookbook-B@1.2.3'
+knife depsolver --env-constraints production-environment-20170501185240-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-20170501185240-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-20170501185240-387d90499514747792a805213c30be13d830d31f.txt --timeout 120
+```
+
+### Chef Server <= 12.4.0
+
+knife-depsolver requires cookbook universe data in order to use Chef DK's embedded depsolver. The "/universe" API endpoint was added in the Chef Server 12.4.0 release.
+
+If you are using a version of Chef Server older than 12.4.0 then you can run the following command on your Chef Server to extract the cookbook universe directly from the database in CSV format.
+
+```
+export ORGNAME=demo
+
+cat <<EOF | chef-server-ctl psql opscode_chef --options '-tAF,' > universe.csv
+SELECT cvd.name,
+cvd.major || '.' || cvd.minor || '.' || cvd.patch AS version,
+updated_at,
+dependencies
+FROM cookbook_version_dependencies cvd
+INNER JOIN cookbooks ckbks
+ON cvd.org_id = ckbks.org_id
+AND cvd.name = ckbks.name
+INNER JOIN cookbook_versions cv
+ON ckbks.id = cv.cookbook_id
+AND cvd.major = cv.major
+AND cvd.minor = cv.minor
+AND cvd.patch = cv.patch
+WHERE cvd.org_id = (SELECT id
+FROM orgs
+WHERE name = '$ORGNAME'
+LIMIT 1)
+ORDER BY updated_at DESC;
+EOF
+```
+
+Then you can run "knife depsolver --csv-universe-to-json universe.csv" to convert it to the normal JSON format.
+
+If the Chef Server doesn't have the "chef-server-ctl psql" command available then you can try replacing that line with the following.
+
+```
+cat <<EOF | su -l opscode-pgsql -c 'psql opscode_chef -tAF,' > universe.csv
 ```
