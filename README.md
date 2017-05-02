@@ -38,6 +38,8 @@ opscode-erchef to send a list of cookbook file metadata back to the chef-client 
 chef gem install knife-depsolver
 ```
 
+*Currently NOT compatible with Windows Chef DK*
+
 ### Using knife-depsolver with Chef Server's depsolver
 
 Find the depsolver solution for a node's run_list.
