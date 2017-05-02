@@ -1,14 +1,12 @@
 # Change Log
 
-## 2.0.0 (2016-10-24)
+## 2.0.0 (2017-05-02)
 
 * Set the node's environment to ensure accurate run_list expansion
-* Add --local-depsolver and --timeout options
-* Add --capture-env-constraints option
-* Add --env-constraints option
-* Add --capture-universe option
-* Add --universe option
-* Add --csv-universe-to-json option
+* Add --capture option to capture all relevant information for local depsolver usage
+* Add ability to use Chef DK's local depsolver to make calculations identical to a Chef Server
+* Add --timeout option
+* Add --csv-universe-to-json option for converting SQL captured cookbook universe to JSON
 * Add --env-constraints-filter-universe option
 
 ## 1.0.1 (2016-03-17)
