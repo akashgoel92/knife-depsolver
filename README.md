@@ -97,7 +97,7 @@ Now use the "--env-constraints", "universe" and "expanded-run-list" options to p
 For example:
 
 ```
-knife depsolver --env-constraints rehearsal-environment-2017-05-01-18:52:40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18:52:40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18:52:40-387d90499514747792a805213c30be13d830d31f.txt
+knife depsolver --env-constraints rehearsal-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt
 ```
 
 Now it is easy to modify any combination of the expanded run list, the environment cookbook version constraints or the cookbook universe in those files and see the impact on the depsolver in an effort to isolate the problem.
@@ -105,7 +105,7 @@ Now it is easy to modify any combination of the expanded run list, the environme
 Sometimes it can help to give the depsolver more than the default five seconds to perform its calculations. This can be done by using the "--timeout <seconds>" option to change the depsolver timeout.
 
 ```
-knife depsolver --env-constraints production-environment-2017-05-01-18:52:40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18:52:40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18:52:40-387d90499514747792a805213c30be13d830d31f.txt --timeout 120
+knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --timeout 120
 ```
 
 ### Chef Server <= 12.4.0
