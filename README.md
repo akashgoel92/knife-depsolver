@@ -108,7 +108,7 @@ Sometimes it can help to give the depsolver more than the default five seconds t
 knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --timeout 120
 ```
 
-### Chef Server <= 12.4.0
+### Chef Server < 12.4.0
 
 knife-depsolver requires cookbook universe data in order to use Chef DK's embedded depsolver. The "/universe" API endpoint was added in the Chef Server 12.4.0 release.
 
