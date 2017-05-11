@@ -65,9 +65,15 @@ knife depsolver -E production 'role[base],cookbook-B,cookbook-A::foo@3.1.4,cookb
 
 ### Using knife-depsolver with Chef DK's embedded depsolver
 
-It can be difficult to identify the source of the problem if we hit a depsolver issue in the Chef Server.
+Mikael Lagerkvist is one of the authors of gecode, the constraint solver used by Chef's depsolver, and he says in the following mail list posts that "Debugging failures in constraint programs is unfortunately a very hard problem."
 
-knife-depsolver can provide many more troubleshooting options by using the depsolver embedded in your workstation's Chef DK to make an identical calculation as the Chef Server.
+http://www.mail-archive.com/users@gecode.org/msg00110.html
+
+https://www.mail-archive.com/users@gecode.org/msg00076.html
+
+In the first post he goes on to talk about the importance of troubleshooting the whole problem set. With regards to the cookbook depsolver this translates to the importance of troubleshooting the whole run list. When troubleshooting a depsolver issue it is best to keep the run list the same and make changes to the environment cookbook version constraints or possibly to the cookbook universe.
+
+knife-depsolver can provide many troubleshooting options by using the depsolver embedded in your workstation's Chef DK to make an identical calculation as the Chef Server.
 
 First, you need to make sure that your version of Chef DK is using the same version of the dep_selector gem as your version of Chef Server. If your Chef DK is using a different version of the dep_selector gem then knife-depsolver's calculations will not be identical to the Chef Server's calculations which will confuse troubleshooting efforts.
 
@@ -100,13 +106,27 @@ For example:
 knife depsolver --env-constraints rehearsal-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt
 ```
 
-Now it is easy to modify any combination of the expanded run list, the environment cookbook version constraints or the cookbook universe in those files and see the impact on the depsolver in an effort to isolate the problem.
+Now it is easy to modify the environment cookbook version constraints or the cookbook universe input files to see the impact on the depsolver.
+
+#### --timeout
 
 Sometimes it can help to give the depsolver more than the default five seconds to perform its calculations. This can be done by using the "--timeout <seconds>" option to change the depsolver timeout.
 
 ```
 knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --timeout 120
 ```
+
+#### --print-constrained-cookbook-set
+
+Sometimes you want to only see the list of cookbooks, and their cookbook dependency version constraints, that ultimately would be sent to the depsolver without actually triggering the depsolver calculation. This is especially helpful when the depsolver isn't returning any results because it can't calculate a solution in a reasonable amount of time. This can be done by using the `--print-constrained-cookbook-set` option.
+
+```
+knife depsolver --env-constraints rehearsal-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --print-constrained-cookbook-set
+```
+
+Now you can review the output to see if you can find anything that could be causing problems for the depsolver. You can make changes to the input files to see the impact on the list of cookbooks that would be sent to the depsolver.
+
+If necessary you could also use the list of cookbooks as a starting point for setting version constraints in the environment input file. Then you can modify that set of version constraints and run the depsolver in an effort to get a solution in a reasonable amount of time or to isolate the problem.
 
 ### Chef Server < 12.4.0
 
