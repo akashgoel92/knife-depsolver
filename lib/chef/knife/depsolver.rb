@@ -43,6 +43,10 @@ class Chef
            long: '--env-constraints-filter-universe',
            description: 'Filter the cookbook universe using the environment cookbook version constraints.'
 
+      option :print_constrained_cookbook_set,
+           long: '--print-constrained-cookbook-set',
+           description: 'Only print the constrained cookbook set that would be sent to the depsolver.'
+
       def run
         begin
           DepSelector::Debug.log.level = Logger::INFO
@@ -83,6 +87,10 @@ class Chef
           end
           if config[:timeout] && !use_local_depsolver
             msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
+            exit!
+          end
+          if config[:print_constrained_cookbook_set] && !use_local_depsolver
+            msg("ERROR: The --print-constrained-cookbook-set option requires the --env-constraints, --universe and --expanded-run-list options to be set")
             exit!
           end
 
@@ -241,6 +249,11 @@ class Chef
 
             data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
 
+            if config[:print_constrained_cookbook_set]
+              print_constrained_cookbook_set(data)
+              exit!
+            end
+
             depsolver_start_time = Time.now
 
             solution = solve(data)
@@ -316,6 +329,61 @@ class Chef
           else
             msg(JSON.pretty_generate(results))
           end
+        end
+      end
+
+      def print_constrained_cookbook_set(data)
+        begin
+          # create dependency graph from cookbooks
+          graph = DepSelector::DependencyGraph.new
+
+          env_constraints = data[:environment_constraints].inject({}) do |acc, env_constraint|
+            name, version, constraint = env_constraint
+            acc[name] = DepSelector::VersionConstraint.new(constraint_to_str(constraint, version))
+            acc
+          end
+
+          all_versions = []
+
+          data[:all_versions].each do | vsn|
+            name, version_constraints = vsn
+            version_constraints.each do |version_constraint| # todo: constraints become an array in ruby
+              # due to the erlectricity conversion from
+              # tuples
+              version, constraints = version_constraint
+
+              # filter versions based on environment constraints
+              env_constraint = env_constraints[name]
+              if (!env_constraint || env_constraint.include?(DepSelector::Version.new(version)))
+                package_version = graph.package(name).add_version(DepSelector::Version.new(version))
+                constraints.each do |package_constraint|
+                  constraint_name, constraint_version, constraint = package_constraint
+                  version_constraint = DepSelector::VersionConstraint.new(constraint_to_str(constraint, constraint_version))
+                  dependency = DepSelector::Dependency.new(graph.package(constraint_name), version_constraint)
+                  package_version.dependencies << dependency
+                end
+              end
+            end
+
+            # regardless of filter, add package reference to all_packages
+            all_versions << graph.package(name)
+          end
+
+          run_list = data[:run_list].map do |run_list_item|
+            item_name, item_constraint_version, item_constraint = run_list_item
+            version_constraint = DepSelector::VersionConstraint.new(constraint_to_str(item_constraint,
+            item_constraint_version))
+            DepSelector::SolutionConstraint.new(graph.package(item_name), version_constraint)
+          end
+
+          timeout_ms = data[:timeout_ms]
+          selector = DepSelector::Selector.new(graph, (timeout_ms / 1000.0))
+
+          constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
+          constrained_cookbook_set.sort {|x,y| x.name <=> y.name}.each {|c| puts c.to_s.gsub(/Package/, 'Cookbook')}
+
+        rescue => e
+          puts = [:error, :exception, e.message, [e.backtrace]]
         end
       end
     end
