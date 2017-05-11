@@ -103,7 +103,7 @@ Now use the "--env-constraints", "universe" and "expanded-run-list" options to p
 For example:
 
 ```
-knife depsolver --env-constraints rehearsal-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt
+knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt
 ```
 
 Now it is easy to modify the environment cookbook version constraints or the cookbook universe input files to see the impact on the depsolver.
@@ -121,7 +121,7 @@ knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5
 Sometimes you want to only see the list of cookbooks, and their cookbook dependency version constraints, that ultimately would be sent to the depsolver without actually triggering the depsolver calculation. This is especially helpful when the depsolver isn't returning any results because it can't calculate a solution in a reasonable amount of time. This can be done by using the `--print-constrained-cookbook-set` option.
 
 ```
-knife depsolver --env-constraints rehearsal-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe automate-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --print-constrained-cookbook-set
+knife depsolver --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --print-constrained-cookbook-set
 ```
 
 Now you can review the output to see if you can find anything that could be causing problems for the depsolver. You can make changes to the input files to see the impact on the list of cookbooks that would be sent to the depsolver.
