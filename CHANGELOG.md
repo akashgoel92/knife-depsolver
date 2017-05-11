@@ -1,5 +1,10 @@
 # Change Log
 
+## 2.0.2 (2017-05-11)
+
+* Set DepSelector log level to INFO
+* Add --print-constrained-cookbook-set option
+
 ## 2.0.1 (2017-05-02)
 
 * Minor change to file name timestamp format
