@@ -31,9 +31,9 @@ class Chef
              long: '--universe FILENAME',
              description: 'Use the cookbook universe from FILENAME. REQUIRED when using the local depsolver.'
 
-       option :expanded_run_list,
-              long: '--expanded-run-list FILENAME',
-              description: 'Use the expanded run list from FILENAME. REQUIRED when using the local depsolver.'
+      option :expanded_run_list,
+             long: '--expanded-run-list FILENAME',
+             description: 'Use the expanded run list from FILENAME. REQUIRED when using the local depsolver.'
 
       option :csv_universe_to_json,
              long: '--csv-universe-to-json FILENAME',
