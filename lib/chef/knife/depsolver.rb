@@ -45,6 +45,7 @@ class Chef
 
       def run
         begin
+          DepSelector::Debug.log.level = Logger::INFO
           use_local_depsolver = false
           if config[:env_constraints_filter_universe]
             if config[:node] || config[:environment] || config[:timeout] || config[:capture] || config[:expanded_run_list] || config[:csv_universe_to_json]
