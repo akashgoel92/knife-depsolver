@@ -1,6 +1,15 @@
 require 'chef/knife'
 require 'digest'
 
+module DepSelector
+  class VersionConstraint
+    def to_s
+      version = @missing_patch_level ? "#{@version.major}.#{@version.minor}" : @version.to_s
+      "#{@op} #{version}"
+    end
+  end
+end
+
 class Chef
   class Knife
     class Depsolver < Knife
