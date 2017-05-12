@@ -380,7 +380,7 @@ class Chef
           selector = DepSelector::Selector.new(graph, (timeout_ms / 1000.0))
 
           constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
-          constrained_cookbook_set.sort {|x,y| x.name <=> y.name}.each {|c| puts c.to_s.gsub(/Package/, 'Cookbook')}
+          constrained_cookbook_set.sort {|x,y| x.name <=> y.name}.each {|c| puts c.to_s.gsub(/^Package/, 'Cookbook')}
 
         rescue => e
           puts = [:error, :exception, e.message, [e.backtrace]]
