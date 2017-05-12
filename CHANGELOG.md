@@ -1,5 +1,11 @@
 # Change Log
 
+## 2.0.3 (2017-05-12)
+
+* Correctly print version if patch level was missing
+* Only set DepSelector::Debug.log.level if DepSelector::Debug is defined
+* Improve regex to avoid unwanted string replacement
+
 ## 2.0.2 (2017-05-11)
 
 * Set DepSelector log level to INFO
