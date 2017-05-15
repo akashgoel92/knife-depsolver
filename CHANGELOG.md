@@ -1,5 +1,9 @@
 # Change Log
 
+## 2.1.0 (2017-05-15)
+
+* Replace --print-constrained-cookbook-set with --print-trimmed-universe
+
 ## 2.0.3 (2017-05-12)
 
 * Correctly print version if patch level was missing
