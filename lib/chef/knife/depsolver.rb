@@ -3,10 +3,7 @@ require 'digest'
 
 module DepSelector
   class VersionConstraint
-    def to_s
-      version = @missing_patch_level ? "#{@version.major}.#{@version.minor}" : @version.to_s
-      "#{@op} #{version}"
-    end
+    attr_reader :missing_patch_level
   end
 end
 
@@ -52,9 +49,9 @@ class Chef
            long: '--env-constraints-filter-universe',
            description: 'Filter the cookbook universe using the environment cookbook version constraints.'
 
-      option :print_constrained_cookbook_set,
-           long: '--print-constrained-cookbook-set',
-           description: 'Only print the constrained cookbook set that would be sent to the depsolver.'
+      option :print_trimmed_universe,
+           long: '--print-trimmed-universe',
+           description: 'Print the cookbooks and dependency data that would be sent to the depsolver.'
 
       def run
         begin
@@ -258,8 +255,8 @@ class Chef
 
             data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
 
-            if config[:print_constrained_cookbook_set]
-              print_constrained_cookbook_set(data)
+            if config[:print_trimmed_universe]
+              puts JSON.pretty_generate(get_trimmed_universe(data))
               exit!
             end
 
@@ -341,8 +338,7 @@ class Chef
         end
       end
 
-      def print_constrained_cookbook_set(data)
-        begin
+      def get_trimmed_universe(data)
           # create dependency graph from cookbooks
           graph = DepSelector::DependencyGraph.new
 
@@ -389,11 +385,18 @@ class Chef
           selector = DepSelector::Selector.new(graph, (timeout_ms / 1000.0))
 
           constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
-          constrained_cookbook_set.sort {|x,y| x.name <=> y.name}.each {|c| puts c.to_s.gsub(/^Package/, 'Cookbook')}
-
-        rescue => e
-          puts = [:error, :exception, e.message, [e.backtrace]]
-        end
+          trimmed_universe = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new } } }
+          constrained_cookbook_set.each do |ckbk|
+            ckbk.versions.each do |ckbk_version|
+              trimmed_universe[ckbk.name][ckbk_version.version]["dependencies"] = Hash.new
+              ckbk_version.dependencies.each do |ckbk_version_dep|
+                constraint = ckbk_version_dep.constraint
+                constraint_version = constraint.missing_patch_level ? "#{constraint.version.major}.#{constraint.version.minor}" : "#{constraint.version}"
+                trimmed_universe[ckbk.name][ckbk_version.version]["dependencies"][ckbk_version_dep.package.name] = "#{constraint.op} #{constraint_version}"
+              end
+            end
+          end
+          trimmed_universe
       end
     end
   end
