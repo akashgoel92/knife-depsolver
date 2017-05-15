@@ -128,6 +128,14 @@ Now you can review the output to see if you can find anything that could be caus
 
 If necessary you could also use the list of cookbooks as a starting point for setting version constraints in the environment input file. Then you can modify that set of version constraints and run the depsolver in an effort to get a solution in a reasonable amount of time or to isolate the problem.
 
+#### /tmp/DepSelectorDebugOn
+
+If you really want to enable the dep_selector gem's debug level output then you can simply create the `touch /tmp/DepSelectorDebugOn` file on your workstation's disk.
+
+```
+touch /tmp/DepSelectorDebugOn
+```
+
 ### Chef Server < 12.4.0
 
 knife-depsolver requires cookbook universe data in order to use Chef DK's embedded depsolver. The "/universe" API endpoint was added in the Chef Server 12.4.0 release.
