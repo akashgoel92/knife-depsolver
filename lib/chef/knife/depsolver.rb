@@ -49,9 +49,9 @@ class Chef
            long: '--env-constraints-filter-universe',
            description: 'Filter the cookbook universe using the environment cookbook version constraints.'
 
-      option :print_trimmed_universe,
-           long: '--print-trimmed-universe',
-           description: 'Print the cookbooks and dependency data that would be sent to the depsolver.'
+      option :trim_universe,
+           long: '--trim-universe',
+           description: 'Print the portion of the cookbook universe that would get sent to the depsolver based on the given run list and environment cookbook version constraints.'
 
       def run
         begin
@@ -95,8 +95,8 @@ class Chef
             msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
             exit!
           end
-          if config[:print_constrained_cookbook_set] && !use_local_depsolver
-            msg("ERROR: The --print-constrained-cookbook-set option requires the --env-constraints, --universe and --expanded-run-list options to be set")
+          if config[:trim_universe] && !use_local_depsolver
+            msg("ERROR: The --trim-universe option requires the --env-constraints, --universe and --expanded-run-list options to be set")
             exit!
           end
 
@@ -255,8 +255,8 @@ class Chef
 
             data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
 
-            if config[:print_trimmed_universe]
-              puts JSON.pretty_generate(get_trimmed_universe(data))
+            if config[:trim_universe]
+              puts JSON.pretty_generate(trim_universe(data))
               exit!
             end
 
@@ -338,7 +338,7 @@ class Chef
         end
       end
 
-      def get_trimmed_universe(data)
+      def trim_universe(data)
           # create dependency graph from cookbooks
           graph = DepSelector::DependencyGraph.new
 
