@@ -1,5 +1,12 @@
 # Change Log
 
+## 2.2.0 (2017-05-19)
+
+* Rename --print-trimmed-universe to --filter-universe
+* Remove --env-constraints-filter-universe option
+* Don't filter cookbook universe by run list when run list is empty
+* Add --version-pin-cookbooks option
+
 ## 2.1.0 (2017-05-15)
 
 * Replace --print-constrained-cookbook-set with --print-trimmed-universe
