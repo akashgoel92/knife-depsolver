@@ -360,7 +360,11 @@ class Chef
           timeout_ms = data[:timeout_ms]
           selector = DepSelector::Selector.new(graph, (timeout_ms / 1000.0))
 
-          constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
+          if run_list.empty?
+            constrained_cookbook_set = selector.dep_graph.packages.values
+          else
+            constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
+          end
           filtered_universe = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new } } }
           constrained_cookbook_set.each do |ckbk|
             ckbk.versions.each do |ckbk_version|
