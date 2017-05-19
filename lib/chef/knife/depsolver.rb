@@ -172,63 +172,15 @@ class Chef
             exit
           end
 
+          if config[:filter_universe]
+            data = get_depsolver_data(node, expanded_run_list_with_versions, timeout)
+            puts JSON.pretty_generate(filter_universe(data))
+            exit!
+          end
+
           depsolver_results = Hash.new
           if use_local_depsolver
-            if config[:env_constraints]
-              unless File.file?(config[:env_constraints])
-                msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
-                exit!
-              end
-              env = JSON.parse(IO.read(config[:env_constraints]))
-              if env['name'].to_s.empty?
-                msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
-                exit!
-              else
-                node.chef_environment = env['name']
-              end
-              if !env['cookbook_versions'].is_a?(Hash)
-                msg("ERROR: #{config[:env_constraints]} does not contain a Hash of cookbook version constraints.")
-                exit!
-              else
-                environment_cookbook_versions = env['cookbook_versions']
-              end
-            else
-              environment_cookbook_versions = Hash.new
-            end
-
-            env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
-              [ckbk_name, ckbk_constraint.split.reverse].flatten
-            end
-
-            unless File.file?(config[:universe])
-              msg("ERROR: #{config[:universe]} does not exist or is not a file.")
-              exit!
-            end
-            universe = JSON.parse(IO.read(config[:universe]))
-            if !universe.is_a?(Hash)
-              msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
-              exit!
-            end
-
-            all_versions = universe.map do |ckbk_name, ckbk_metadata|
-              ckbk_versions = ckbk_metadata.map do |version, version_metadata|
-                [version, version_metadata['dependencies'].map { |dep_ckbk_name, dep_ckbk_constraint| [dep_ckbk_name, dep_ckbk_constraint.split.reverse].flatten }]
-              end
-              [ckbk_name, ckbk_versions]
-            end
-
-            expanded_run_list_with_split_versions = expanded_run_list_with_versions.map do |run_list_item|
-              name, version = run_list_item.split('@')
-              name.sub!(/::.*/, '')
-              version ? [name, version] : name
-            end
-
-            data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
-
-            if config[:filter_universe]
-              puts JSON.pretty_generate(filter_universe(data))
-              exit!
-            end
+            data = get_depsolver_data(node, expanded_run_list_with_versions, timeout)
 
             depsolver_start_time = Time.now
 
@@ -306,6 +258,60 @@ class Chef
             msg(JSON.pretty_generate(results))
           end
         end
+      end
+
+      def get_depsolver_data(node, expanded_run_list_with_versions, timeout)
+        if config[:env_constraints]
+          unless File.file?(config[:env_constraints])
+            msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
+            exit!
+          end
+          env = JSON.parse(IO.read(config[:env_constraints]))
+          if env['name'].to_s.empty?
+            msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
+            exit!
+          else
+            node.chef_environment = env['name']
+          end
+          if !env['cookbook_versions'].is_a?(Hash)
+            msg("ERROR: #{config[:env_constraints]} does not contain a Hash of cookbook version constraints.")
+            exit!
+          else
+            environment_cookbook_versions = env['cookbook_versions']
+          end
+        else
+          environment_cookbook_versions = Hash.new
+        end
+
+        env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
+          [ckbk_name, ckbk_constraint.split.reverse].flatten
+        end
+
+        unless File.file?(config[:universe])
+          msg("ERROR: #{config[:universe]} does not exist or is not a file.")
+          exit!
+        end
+        universe = JSON.parse(IO.read(config[:universe]))
+        if !universe.is_a?(Hash)
+          msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
+          exit!
+        end
+
+        all_versions = universe.map do |ckbk_name, ckbk_metadata|
+          ckbk_versions = ckbk_metadata.map do |version, version_metadata|
+            [version, version_metadata['dependencies'].map { |dep_ckbk_name, dep_ckbk_constraint| [dep_ckbk_name, dep_ckbk_constraint.split.reverse].flatten }]
+          end
+          [ckbk_name, ckbk_versions]
+        end
+
+        expanded_run_list_with_split_versions = expanded_run_list_with_versions.map do |run_list_item|
+          name, version = run_list_item.split('@')
+          name.sub!(/::.*/, '')
+          version ? [name, version] : name
+        end
+
+        depsolver_data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
+        depsolver_data
       end
 
       def filter_universe(data)
