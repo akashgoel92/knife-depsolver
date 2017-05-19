@@ -49,6 +49,9 @@ class Chef
            long: '--filter-universe',
            description: 'Filter the cookbook universe by environment cookbook version constraints and an optional run list.'
 
+      option :version_pin_cookbooks,
+           long: '--version-pin-cookbooks FILENAME',
+           description: 'Print the cookbooks and dependency data that would be sent to the depsolver.'
 
       def run
         begin
@@ -104,6 +107,21 @@ class Chef
             universe_filename = "universe-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(universe_json)}.txt"
             IO.write(universe_filename, universe_json)
             puts "Cookbook universe saved to #{universe_filename}"
+            exit!
+          end
+
+          if config[:version_pin_cookbooks]
+            unless File.file?(config[:version_pin_cookbooks])
+              msg("ERROR: #{config[:version_pin_cookbooks]} does not exist or is not a file.")
+              exit!
+            end
+            cookbooks = JSON.parse(IO.read(config[:version_pin_cookbooks]))
+            version_pinned_cookbooks = Hash.new
+            cookbooks.each do |cookbook_name, versions|
+              max_version = versions.keys.max_by {|v| DepSelector::Version.new(v) }
+              version_pinned_cookbooks[cookbook_name] = "= #{max_version}" if max_version
+            end
+            puts JSON.pretty_generate({name: "version-pinned-cookbooks", cookbook_versions: version_pinned_cookbooks})
             exit!
           end
 
