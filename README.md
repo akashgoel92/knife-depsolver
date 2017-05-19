@@ -127,12 +127,20 @@ knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90
 Combine the --universe and the --filter-universe options with --env-constraints and/or --expanded-run-list options to filter the cookbook universe based on the environment cookbook version constraints and/or the expanded run list. This provides the ability to focus only on relevant information that would be sent to the depsolver without actually triggering the depsolver calculation. This is especially helpful when the depsolver isn't returning any results because it can't calculate a solution in a reasonable amount of time.
 
 ```
-knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --filter-universe
+knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --filter-universe > filtered-universe.txt
 ```
 
 Now you can review the output to see if you can find anything that could be causing problems for the depsolver. You can make changes to the input files to see the impact on the list of cookbooks that would be sent to the depsolver.
 
-If necessary you could also use the list of cookbooks as a starting point for setting version constraints in the environment input file. Then you can modify that set of version constraints and run the depsolver in an effort to get a solution in a reasonable amount of time or to isolate the problem.
+If necessary you could also use the results along with the --version-pin-cookbooks option to create an environment input file that pins a version for each cookbook. Then you can modify that set of version constraints and run the depsolver in an effort to get a solution in a reasonable amount of time or to isolate the problem.
+
+#### --version-pin-cookbooks
+
+The --version-pin-cookbooks option takes a filename as an argument. The file must be in the JSON format of a cookbook universe or filtered cookbook universe. The --version-pin-cookbooks option creates an environment JSON file with cookbook version constraints for that pin every cookbook to its latest version. This environment file can then be used with the --env-constraints option to provide a strictly constrained starting point when troubleshooting a depsolver issue.
+
+```
+knife depsolver --version-pin-cookbooks filtered-universe.txt > version-pinned-cookbooks.txt
+```
 
 #### /tmp/DepSelectorDebugOn
 
