@@ -140,6 +140,9 @@ class Chef
 
           node.chef_environment = config[:environment] if config[:environment]
 
+          run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
+          expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
+
           if config[:capture]
             if node.chef_environment == '_default'
               environment_cookbook_versions = Hash.new
@@ -165,29 +168,37 @@ class Chef
               puts "WARNING: Try capturing the cookbook universe using the SQL query found in the knife-depsolver README."
               puts "WARNING: Then convert the results using knife-depsolver's --csv-universe-to-json option"
             end
+            exit
           end
 
-          if config[:env_constraints]
-            unless File.file?(config[:env_constraints])
-              msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
-              exit!
-            end
-            env = JSON.parse(IO.read(config[:env_constraints]))
-            if env['name'].to_s.empty?
-              msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
-              exit!
+          depsolver_results = Hash.new
+          if use_local_depsolver
+            if config[:env_constraints]
+              unless File.file?(config[:env_constraints])
+                msg("ERROR: #{config[:env_constraints]} does not exist or is not a file.")
+                exit!
+              end
+              env = JSON.parse(IO.read(config[:env_constraints]))
+              if env['name'].to_s.empty?
+                msg("ERROR: #{config[:env_constraints]} does not contain an environment name.")
+                exit!
+              else
+                node.chef_environment = env['name']
+              end
+              if !env['cookbook_versions'].is_a?(Hash)
+                msg("ERROR: #{config[:env_constraints]} does not contain a Hash of cookbook version constraints.")
+                exit!
+              else
+                environment_cookbook_versions = env['cookbook_versions']
+              end
             else
-              node.chef_environment = env['name']
+              environment_cookbook_versions = Hash.new
             end
-            if !env['cookbook_versions'].is_a?(Hash)
-              msg("ERROR: #{config[:env_constraints]} does not contain a Hash of cookbook version constraints.")
-              exit!
-            else
-              environment_cookbook_versions = env['cookbook_versions']
-            end
-          end
 
-          if config[:universe]
+            env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
+              [ckbk_name, ckbk_constraint.split.reverse].flatten
+            end
+
             unless File.file?(config[:universe])
               msg("ERROR: #{config[:universe]} does not exist or is not a file.")
               exit!
@@ -196,18 +207,6 @@ class Chef
             if !universe.is_a?(Hash)
               msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
               exit!
-            end
-          end
-
-          run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
-          expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
-
-          exit if config[:capture]
-
-          depsolver_results = Hash.new
-          if use_local_depsolver
-            env_ckbk_constraints = environment_cookbook_versions.map do |ckbk_name, ckbk_constraint|
-              [ckbk_name, ckbk_constraint.split.reverse].flatten
             end
 
             all_versions = universe.map do |ckbk_name, ckbk_metadata|
