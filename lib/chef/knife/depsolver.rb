@@ -138,8 +138,9 @@ class Chef
             end
           end
 
+          # node.chef_environment must be set before expanding the run list in case the run list includes
+          # roles with environment specific run lists
           node.chef_environment = config[:environment] if config[:environment]
-
           run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
           expanded_run_list_with_versions = run_list_expansion.recipes.with_version_constraints_strings
 
