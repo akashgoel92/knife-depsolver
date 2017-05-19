@@ -45,10 +45,10 @@ class Chef
              long: '--csv-universe-to-json FILENAME',
              description: 'Convert a CSV cookbook universe, FILENAME, to JSON.'
 
+      option :filter_universe,
+           long: '--filter-universe',
+           description: 'Filter the cookbook universe by environment cookbook version constraints and an optional run list.'
 
-      option :trim_universe,
-           long: '--trim-universe',
-           description: 'Print the portion of the cookbook universe that would get sent to the depsolver based on the given run list and environment cookbook version constraints.'
 
       def run
         begin
@@ -80,8 +80,8 @@ class Chef
               msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
               exit!
             end
-            if config[:trim_universe]
-              msg("ERROR: The --trim-universe option requires the --universe option and optionally the --env-constraints and/or --expanded-run-list options")
+            if config[:filter_universe]
+              msg("ERROR: The --filter-universe option requires the --universe option and optionally the --env-constraints and/or --expanded-run-list options")
               exit!
             end
           end
@@ -225,8 +225,8 @@ class Chef
 
             data = {environment_constraints: env_ckbk_constraints, all_versions: all_versions, run_list: expanded_run_list_with_split_versions, timeout_ms: timeout}
 
-            if config[:trim_universe]
-              puts JSON.pretty_generate(trim_universe(data))
+            if config[:filter_universe]
+              puts JSON.pretty_generate(filter_universe(data))
               exit!
             end
 
@@ -308,7 +308,7 @@ class Chef
         end
       end
 
-      def trim_universe(data)
+      def filter_universe(data)
           # create dependency graph from cookbooks
           graph = DepSelector::DependencyGraph.new
 
@@ -355,18 +355,18 @@ class Chef
           selector = DepSelector::Selector.new(graph, (timeout_ms / 1000.0))
 
           constrained_cookbook_set = selector.send(:trim_unreachable_packages, selector.dep_graph, run_list)
-          trimmed_universe = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new } } }
+          filtered_universe = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new { |h,k| h[k] = Hash.new } } }
           constrained_cookbook_set.each do |ckbk|
             ckbk.versions.each do |ckbk_version|
-              trimmed_universe[ckbk.name][ckbk_version.version]["dependencies"] = Hash.new
+              filtered_universe[ckbk.name][ckbk_version.version]["dependencies"] = Hash.new
               ckbk_version.dependencies.each do |ckbk_version_dep|
                 constraint = ckbk_version_dep.constraint
                 constraint_version = constraint.missing_patch_level ? "#{constraint.version.major}.#{constraint.version.minor}" : "#{constraint.version}"
-                trimmed_universe[ckbk.name][ckbk_version.version]["dependencies"][ckbk_version_dep.package.name] = "#{constraint.op} #{constraint_version}"
+                filtered_universe[ckbk.name][ckbk_version.version]["dependencies"][ckbk_version_dep.package.name] = "#{constraint.op} #{constraint_version}"
               end
             end
           end
-          trimmed_universe
+          filtered_universe
       end
     end
   end
