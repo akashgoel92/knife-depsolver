@@ -75,12 +75,16 @@ In the first post he goes on to talk about the importance of troubleshooting the
 
 knife-depsolver can provide many troubleshooting options by using the depsolver embedded in your workstation's Chef DK to make an identical calculation as the Chef Server.
 
+#### Use the appropriate version of Chef DK
+
 First, you need to make sure that your version of Chef DK is using the same version of the dep_selector gem as your version of Chef Server. If your Chef DK is using a different version of the dep_selector gem then knife-depsolver's calculations will not be identical to the Chef Server's calculations which will confuse troubleshooting efforts.
 
 | dep_selector gem | Chef Server | Chef DK    |
 | ---------------- | ----------- | ---------- |
 | 1.0.3            | <= 12.8.0   | <= 0.16.28 |
 | 1.0.4            | >= 12.9.0   | >= 0.17.17 |
+
+#### --capture
 
 Once you are sure you are using the correct version of Chef DK and you have installed the knife-depsolver plugin you can use the "--capture" option which queries the Chef Server and creates a separate file on the workstation for each of the following pieces of information.
 
@@ -98,7 +102,9 @@ OR
 knife depsolver -E production 'role[base],cookbook-B,cookbook-A::foo@3.1.4,cookbook-R' --capture
 ```
 
-Now use the "--env-constraints", "universe" and "expanded-run-list" options to provide all the information required for local depsolver calculations.
+#### --env-constraints, --universe and --expanded-run-list
+
+Now use the "--env-constraints", "--universe" and "--expanded-run-list" options to provide the information required for local depsolver calculations.
 
 For example:
 
@@ -106,7 +112,7 @@ For example:
 knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt
 ```
 
-Now it is easy to modify the environment cookbook version constraints or the cookbook universe input files to see the impact on the depsolver.
+This makes it easy to modify the input files to see the impact on the depsolver.
 
 #### --timeout
 
@@ -118,7 +124,7 @@ knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90
 
 #### --filter-universe
 
-Sometimes you want to only see the list of cookbooks, and their cookbook dependency version constraints, that ultimately would be sent to the depsolver without actually triggering the depsolver calculation. This is especially helpful when the depsolver isn't returning any results because it can't calculate a solution in a reasonable amount of time. This can be done by using the `--filter-universe` option.
+Combine the --universe and the --filter-universe options with --env-constraints and/or --expanded-run-list options to filter the cookbook universe based on the environment cookbook version constraints and/or the expanded run list. This provides the ability to focus only on relevant information that would be sent to the depsolver without actually triggering the depsolver calculation. This is especially helpful when the depsolver isn't returning any results because it can't calculate a solution in a reasonable amount of time.
 
 ```
 knife depsolver --expanded-run-list expanded-run-list-2017-05-01-18.52.40-387d90499514747792a805213c30be13d830d31f.txt --universe my-org-universe-2017-05-01-18.52.40-1c8e59e23530b1e1a8e0b3b3cc5236a29c84e469.txt --env-constraints production-environment-2017-05-01-18.52.40-5f5843d819ecb0b174f308d76d4336bb7bbfacbf.txt --filter-universe
