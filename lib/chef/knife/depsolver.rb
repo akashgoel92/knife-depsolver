@@ -45,9 +45,6 @@ class Chef
              long: '--csv-universe-to-json FILENAME',
              description: 'Convert a CSV cookbook universe, FILENAME, to JSON.'
 
-      option :env_constraints_filter_universe,
-           long: '--env-constraints-filter-universe',
-           description: 'Filter the cookbook universe using the environment cookbook version constraints.'
 
       option :trim_universe,
            long: '--trim-universe',
@@ -56,48 +53,37 @@ class Chef
       def run
         begin
           DepSelector::Debug.log.level = Logger::INFO if defined?(DepSelector::Debug)
-          use_local_depsolver = false
-          if config[:env_constraints_filter_universe]
-            if config[:node] || config[:environment] || config[:timeout] || config[:capture] || config[:expanded_run_list] || config[:csv_universe_to_json]
-              msg("ERROR: The --env-constraints-filter-universe option is only compatible with the --env-constraints and --universe options")
+          use_local_depsolver = config[:universe] ? true : false
+          if use_local_depsolver
+            unless name_args.empty?
+              puts "ERROR: Setting a run list on the command line is not compatible with the --universe option"
               exit!
-            elsif !(config[:env_constraints] && config[:universe])
-              msg("ERROR: The --env-constraints-filter-universe option requires the --env-constraints and --universe options to be set")
+            end
+            if config[:node]
+              puts "ERROR: The --node option is not compatible with the --universe option"
+              exit!
+            end
+            if config[:environment]
+              puts "ERROR: The --environment option is not compatible with the --universe option"
+              exit!
+            end
+            if config[:capture]
+              puts "ERROR: The --capture option is not compatible with the --universe option"
               exit!
             end
           else
-            if config[:env_constraints] || config[:universe] || config[:expanded_run_list]
-              if config[:env_constraints] && config[:universe] && config[:expanded_run_list]
-                use_local_depsolver = true
-                unless name_args.empty?
-                  puts "ERROR: Setting a run list on the command line is not compatible with the --env-constraints, --universe or --expanded-run-list options"
-                  exit!
-                end
-                if config[:node]
-                  puts "ERROR: The --node option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
-                  exit!
-                end
-                if config[:environment]
-                  puts "ERROR: The --environment option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
-                  exit!
-                end
-                if config[:capture]
-                  puts "ERROR: The --capture option is not compatible with the --env-constraints, --universe or --expanded-run-list options"
-                  exit!
-                end
-              else
-                puts "ERROR: The --env-constraints, --universe and --expanded-run-list options must be used together to use the local depsolver"
-                exit!
-              end
+            if (config[:env_constraints] || config[:expanded_run_list])
+              puts "ERROR: The --env-constraints and --expanded-run-list options require the --universe option to be set"
+              exit!
             end
-          end
-          if config[:timeout] && !use_local_depsolver
-            msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
-            exit!
-          end
-          if config[:trim_universe] && !use_local_depsolver
-            msg("ERROR: The --trim-universe option requires the --env-constraints, --universe and --expanded-run-list options to be set")
-            exit!
+            if config[:timeout]
+              msg("ERROR: The --timeout option requires the --env-constraints, --universe and --expanded-run-list options to be set")
+              exit!
+            end
+            if config[:trim_universe]
+              msg("ERROR: The --trim-universe option requires the --universe option and optionally the --env-constraints and/or --expanded-run-list options")
+              exit!
+            end
           end
 
           timeout = (config[:timeout].to_f * 1000).to_i if config[:timeout]
@@ -121,7 +107,7 @@ class Chef
             exit!
           end
 
-          if config[:node] && !(config[:env_constraints_filter_universe] && config[:env_constraints])
+          if config[:node]
             node = Chef::Node.load(config[:node])
           else
             node = Chef::Node.new
@@ -211,22 +197,6 @@ class Chef
               msg("ERROR: #{config[:universe]} does not contain a cookbook universe Hash.")
               exit!
             end
-          end
-
-          if config[:env_constraints_filter_universe]
-            env_constraints = environment_cookbook_versions.each_with_object({}) do |env_constraint, memo|
-              name, constraint = env_constraint
-              constraint, version = constraint.split
-              memo[name] = DepSelector::VersionConstraint.new(constraint_to_str(constraint, version))
-            end
-            universe.each do |name, versions|
-              versions.delete_if {|version, v| !env_constraints[name].include?(version)} if env_constraints[name]
-            end
-            filtered_universe_json = JSON.pretty_generate(universe)
-            filtered_universe_filename = "filtered-universe-#{Time.now.strftime("%Y-%m-%d-%H.%M.%S")}-#{Digest::SHA1.hexdigest(filtered_universe_json)}.txt"
-            IO.write(filtered_universe_filename, filtered_universe_json)
-            puts "Filtered cookbook universe saved to #{filtered_universe_filename}"
-            exit!
           end
 
           run_list_expansion = node.run_list.expand(node.chef_environment, 'server')
